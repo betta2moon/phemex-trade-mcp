@@ -3,4 +3,4 @@ dist/
 .env
 .mcp.json
 .claude/
-doc/
+docs/

@@ -144,6 +144,8 @@ export PHEMEX_API_SECRET=your-secret
 export PHEMEX_API_URL=https://api.phemex.com
 ```
 
+The skill uses `phemex-cli` (included in the npm package) for direct tool invocation — no mcporter needed.
+
 Then ask your OpenClaw agent: "What's the current BTC price on Phemex?"
 
 ### Any MCP Client (stdio)
@@ -180,13 +182,15 @@ npm run start     # run the server
 
 ```
 src/
-  index.ts              # Server entry point — registers all tools
+  index.ts              # MCP server entry point — registers all tools
+  cli.ts                # CLI entry point — dispatches to tool handlers
+  cli-parser.ts         # CLI argument parser (flag + JSON modes)
   client.ts             # Phemex API client (auth, signing, HTTP)
   contract-router.ts    # Routes tools to correct API endpoints per contract type
   product-info.ts       # Caches product metadata for price/qty scaling
   types.ts              # Shared types
   tools/
-    get-ticker.ts       # One file per tool
+    get-ticker.ts       # One file per MCP tool
     place-order.ts
     ...
 ```
@@ -196,6 +200,31 @@ Key design decisions:
 - **Contract router** — a single `contractType` parameter on every tool dispatches to the correct Phemex API endpoint (USDT-M `/g-*`, Coin-M `/orders/*`, Spot `/spot/*`).
 - **Automatic scaling** — Coin-M and Spot APIs use integer-scaled values (`priceEp`, `baseQtyEv`). The server handles conversion automatically via `ProductInfoCache`, so agents always work with human-readable decimals.
 - **Symbol resolution** — Spot symbols are auto-prefixed with `s` for the API (e.g. `BTCUSDT` becomes `sBTCUSDT`). Agents don't need to know this.
+
+## CLI Usage
+
+The package also includes a `phemex-cli` binary for direct command-line access (used by OpenClaw skills):
+
+```bash
+# Install globally
+npm install -g phemex-trade-mcp
+
+# Set your API keys
+export PHEMEX_API_KEY=your-key
+export PHEMEX_API_SECRET=your-secret
+export PHEMEX_API_URL=https://api.phemex.com
+
+# Use any tool
+phemex-cli get_ticker --symbol BTCUSDT
+phemex-cli get_positions --currency USDT
+phemex-cli place_order --symbol BTCUSDT --side Buy --orderQty 0.01 --ordType Market
+
+# JSON args also supported
+phemex-cli get_ticker '{"symbol":"BTCUSDT"}'
+
+# Help
+phemex-cli --help
+```
 
 ## License
 

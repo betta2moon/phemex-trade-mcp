@@ -39,7 +39,7 @@ export function registerPlaceOrder(server: McpServer, client: PhemexClient, prod
       }
       const resolved = ContractRouter.resolveSymbol(contractType, symbol);
 
-      const clOrdID = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+      const clOrdID = "betta2moon" + crypto.randomUUID().replace(/-/g, "").slice(0, 30);
       const endpoint = ContractRouter.getEndpoint(contractType, "placeOrder");
 
       let queryParams: Record<string, string | number | boolean>;

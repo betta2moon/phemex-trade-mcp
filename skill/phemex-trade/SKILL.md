@@ -1,7 +1,7 @@
 ---
 name: phemex-trade
 description: Trade on Phemex (USDT-M futures, Coin-M futures, Spot) — place orders, manage positions, check balances, and query market data.
-homepage: https://github.com/nickhould/phemex-trade-mcp
+homepage: https://github.com/betta2moon/phemex-trade-mcp
 metadata:
   {
     "openclaw":

@@ -1,12 +1,14 @@
 {
   "name": "phemex-trade-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "type": "module",
   "bin": {
     "phemex-trade-mcp": "./dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "directories": {
     "doc": "docs"
   },
@@ -17,17 +19,23 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "keywords": ["mcp", "phemex", "trading", "futures", "crypto"],
+  "keywords": [
+    "mcp",
+    "phemex",
+    "trading",
+    "futures",
+    "crypto"
+  ],
   "author": "",
   "license": "ISC",
   "description": "MCP server for trading on Phemex — USDT-M futures, Coin-M futures, and Spot markets",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "dotenv": "^17.3.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.2.3",
+    "dotenv": "^17.3.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

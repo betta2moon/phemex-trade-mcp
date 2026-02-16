@@ -1,6 +1,6 @@
 ---
 name: phemex-trade
-description: Trade on Phemex (USDT-M futures, Coin-M futures, Spot) — place orders, manage positions, check balances, and query market data.
+description: Trade on Phemex (USDT-M futures, Coin-M futures, Spot) — place orders, manage positions, check balances, and query market data. Use when the user wants to (1) check crypto prices or market data on Phemex, (2) place, amend, or cancel orders, (3) view account balances or positions, (4) set leverage or switch position modes, (5) transfer funds between spot and futures wallets, or (6) any task involving the Phemex exchange.
 homepage: https://github.com/betta2moon/phemex-trade-mcp
 metadata:
   {
@@ -70,7 +70,11 @@ Every tool accepts an optional `--contractType` flag:
 
 ### Trading (auth required)
 
-- `place_order` — Place an order. Example: `phemex-cli place_order --symbol BTCUSDT --side Buy --orderQty 0.01 --ordType Market`
+- `place_order` — Place an order (Market, Limit, Stop, StopLimit). Key params: `--symbol`, `--side` (Buy/Sell), `--orderQty`, `--ordType`, `--price` (Limit/StopLimit), `--stopPx` (Stop/StopLimit), `--timeInForce` (GoodTillCancel/PostOnly/ImmediateOrCancel/FillOrKill), `--reduceOnly`, `--posSide` (Long/Short/Merged), `--stopLoss`, `--takeProfit`, `--qtyType` (spot only). **orderQty units differ by contract type:**
+  - `linear` (USDT-M): orderQty = base currency amount (e.g. `0.01` = 0.01 BTC). To buy 10 USDT worth, calculate qty = 10 / current price.
+  - `inverse` (Coin-M): orderQty = number of contracts as integer (e.g. `10` = 10 contracts). Each contract has a fixed USD value (e.g. 1 USD/contract for BTCUSD).
+  - `spot`: depends on `--qtyType`. `ByBase` (default) = base currency (e.g. `0.01` = 0.01 BTC). `ByQuote` = quote currency (e.g. `50` = 50 USDT worth of BTC).
+  - Example: `phemex-cli place_order --symbol BTCUSDT --side Buy --orderQty 0.01 --ordType Market`
 - `amend_order` — Modify an open order. Example: `phemex-cli amend_order --symbol BTCUSDT --orderID xxx --price 95000`
 - `cancel_order` — Cancel one order. Example: `phemex-cli cancel_order --symbol BTCUSDT --orderID xxx`
 - `cancel_all_orders` — Cancel all orders for a symbol. Example: `phemex-cli cancel_all_orders --symbol BTCUSDT`
@@ -127,5 +131,5 @@ phemex-cli get_positions --currency USDT
 1. Create a Phemex account at https://phemex.com
 2. Create an API key (Account → API Management)
 3. Set environment variables `PHEMEX_API_KEY` and `PHEMEX_API_SECRET`
-4. Optionally set `PHEMEX_API_URL` (defaults to `https://testnet-api.phemex.com`; use `https://api.phemex.com` for production)
+4. Optionally set `PHEMEX_API_URL` (defaults to testnet `https://testnet-api.phemex.com` for safety; set to `https://api.phemex.com` for real trading)
 5. Optionally set `PHEMEX_MAX_ORDER_VALUE` to limit maximum order size (USD)

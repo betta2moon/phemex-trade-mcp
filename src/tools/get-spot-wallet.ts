@@ -12,7 +12,7 @@ export function registerGetSpotWallet(server: McpServer, client: PhemexClient, p
       const res = await client.get<unknown>("/spot/wallets");
       if (res.code !== 0) {
         return {
-          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code)}` }],
+          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code, res.msg)}` }],
           isError: true,
         };
       }

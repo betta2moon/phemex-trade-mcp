@@ -97,7 +97,7 @@ const handleGetKlines: ToolHandler = async (params, client) => {
   const from = to - resolution * limit;
   const endpoint = ContractRouter.getEndpoint(ct, "klines");
   const res = await client.getPublic<unknown>(endpoint, { symbol: resolved, resolution, limit, from, to });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   succeed(res.data);
 };
 
@@ -118,7 +118,7 @@ const handleGetFundingRate: ToolHandler = async (params, client) => {
   if (ContractRouter.isSpot(ct)) fail("Spot does not have funding rates.");
   const endpoint = ContractRouter.getEndpoint(ct, "fundingRate");
   const res = await client.getPublic<unknown>(endpoint, { symbol, limit });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   succeed(res.data);
 };
 
@@ -130,13 +130,13 @@ const handleGetAccount: ToolHandler = async (params, client) => {
   if (ContractRouter.isSpot(ct)) fail("Spot does not have a futures-style account. Use get_spot_wallet.");
   const endpoint = ContractRouter.getEndpoint(ct, "account");
   const res = await client.get<unknown>(endpoint, { currency });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   succeed(res.data);
 };
 
 const handleGetSpotWallet: ToolHandler = async (params, client, pc) => {
   const res = await client.get<unknown>("/spot/wallets");
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   let data = res.data;
   if (Array.isArray(data) && pc.isLoaded()) {
     data = data.map((wallet: Record<string, unknown>) => {
@@ -169,7 +169,7 @@ const handleGetPositions: ToolHandler = async (params, client) => {
   if (ContractRouter.isSpot(ct)) fail("Spot does not have positions.");
   const endpoint = ContractRouter.getEndpoint(ct, "positions");
   const res = await client.get<unknown>(endpoint, { currency });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   succeed(res.data);
 };
 
@@ -183,7 +183,7 @@ const handleGetOpenOrders: ToolHandler = async (params, client, pc) => {
   const res = await client.get<unknown>(endpoint, { symbol: resolved });
   if (res.code !== 0) {
     if (res.msg === "OM_ORDER_NOT_FOUND") succeed({ message: `No open orders for ${symbol}.`, orders: [] });
-    fail(client.getErrorMessage(res.code));
+    fail(client.getErrorMessage(res.code, res.msg));
   }
   const data = (ContractRouter.isInverse(ct) || ContractRouter.isSpot(ct)) ? pc.convertResponse(resolved, res.data) : res.data;
   succeed(data);
@@ -198,7 +198,7 @@ const handleGetOrderHistory: ToolHandler = async (params, client, pc) => {
   const resolved = ContractRouter.resolveSymbol(ct, symbol);
   const endpoint = ContractRouter.getEndpoint(ct, "orderHistory");
   const res = await client.get<unknown>(endpoint, { symbol: resolved, limit });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const data = (ContractRouter.isInverse(ct) || ContractRouter.isSpot(ct)) ? pc.convertResponse(resolved, res.data) : res.data;
   succeed(data);
 };
@@ -212,7 +212,7 @@ const handleGetTrades: ToolHandler = async (params, client, pc) => {
   const resolved = ContractRouter.resolveSymbol(ct, symbol);
   const endpoint = ContractRouter.getEndpoint(ct, "tradeHistory");
   const res = await client.get<unknown>(endpoint, { symbol: resolved, limit });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const data = (ContractRouter.isInverse(ct) || ContractRouter.isSpot(ct)) ? pc.convertResponse(resolved, res.data) : res.data;
   succeed(data);
 };
@@ -275,7 +275,7 @@ const handlePlaceOrder: ToolHandler = async (params, client, pc) => {
   }
 
   const res = await client.putWithQuery<unknown>(endpoint, queryParams);
-  if (res.code !== 0) fail(`Order FAILED: ${client.getErrorMessage(res.code)}`);
+  if (res.code !== 0) fail(`Order FAILED: ${client.getErrorMessage(res.code, res.msg)}`);
   const data = (ContractRouter.isInverse(ct) || ContractRouter.isSpot(ct)) ? pc.convertResponse(resolved, res.data) : res.data;
   succeed(data);
 };
@@ -312,7 +312,7 @@ const handleAmendOrder: ToolHandler = async (params, client, pc) => {
   }
 
   const res = await client.putWithQuery<unknown>(endpoint, qp);
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const data = (ContractRouter.isInverse(ct) || ContractRouter.isSpot(ct)) ? pc.convertResponse(resolved, res.data) : res.data;
   succeed(data);
 };
@@ -335,7 +335,7 @@ const handleCancelOrder: ToolHandler = async (params, client, pc) => {
   if (!ContractRouter.isInverse(ct) && !ContractRouter.isSpot(ct)) qp.posSide = posSide;
 
   const res = await client.delete<unknown>(endpoint, qp);
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const data = (ContractRouter.isInverse(ct) || ContractRouter.isSpot(ct)) ? pc.convertResponse(resolved, res.data) : res.data;
   succeed(data);
 };
@@ -352,7 +352,7 @@ const handleCancelAllOrders: ToolHandler = async (params, client, pc) => {
   if (untriggered) qp.untriggered = true;
 
   const res = await client.delete<unknown>(endpoint, qp);
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const data = (ContractRouter.isInverse(ct) || ContractRouter.isSpot(ct)) ? pc.convertResponse(resolved, res.data) : res.data;
   succeed(data);
 };
@@ -374,7 +374,7 @@ const handleSetLeverage: ToolHandler = async (params, client, pc) => {
   }
 
   const res = await client.putWithQuery<unknown>(endpoint, qp);
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const data = ContractRouter.isInverse(ct) ? pc.convertResponse(symbol, res.data) : res.data;
   succeed(data);
 };
@@ -389,7 +389,7 @@ const handleSwitchPosMode: ToolHandler = async (params, client, pc) => {
   if (symbolErr) fail(symbolErr);
   const endpoint = ContractRouter.getEndpoint(ct, "switchPosMode");
   const res = await client.putWithQuery<unknown>(endpoint, { symbol, targetPosMode });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const data = ContractRouter.isInverse(ct) ? pc.convertResponse(symbol, res.data) : res.data;
   succeed(data);
 };
@@ -410,7 +410,7 @@ const handleTransferFunds: ToolHandler = async (params, client, pc) => {
   catch { fail(`Unknown currency '${currency}'.`); return; }
   const moveOp = direction === "spot_to_futures" ? 2 : 1;
   const res = await client.post<unknown>("/assets/transfer", { amountEv, currency, moveOp });
-  if (res.code !== 0) fail(`Transfer failed: ${client.getErrorMessage(res.code)}`);
+  if (res.code !== 0) fail(`Transfer failed: ${client.getErrorMessage(res.code, res.msg)}`);
   const data = res.data as Record<string, unknown>;
   const display = { ...data };
   if (typeof data.amountEv === "number") {
@@ -426,7 +426,7 @@ const handleGetTransferHistory: ToolHandler = async (params, client, pc) => {
   const direction = optString(params, "direction") as "spot_to_futures" | "futures_to_spot" | undefined;
   const limit = optNumber(params, "limit", 20)!;
   const res = await client.get<unknown>("/assets/transfer", { currency, limit });
-  if (res.code !== 0) fail(client.getErrorMessage(res.code));
+  if (res.code !== 0) fail(client.getErrorMessage(res.code, res.msg));
   const resData = res.data as Record<string, unknown>;
   let rawRows: Record<string, unknown>[] = Array.isArray(resData?.rows) ? resData.rows : (Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : []);
   if (direction !== undefined) {

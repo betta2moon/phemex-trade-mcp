@@ -28,7 +28,7 @@ export function registerGetTransferHistory(server: McpServer, client: PhemexClie
 
       if (res.code !== 0) {
         return {
-          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code)}` }],
+          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code, res.msg)}` }],
           isError: true,
         };
       }

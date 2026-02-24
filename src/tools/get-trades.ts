@@ -25,7 +25,7 @@ export function registerGetTrades(server: McpServer, client: PhemexClient, produ
       const res = await client.get<unknown>(endpoint, { symbol: resolved, limit });
       if (res.code !== 0) {
         return {
-          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code)}` }],
+          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code, res.msg)}` }],
           isError: true,
         };
       }

@@ -58,7 +58,7 @@ export function registerAmendOrder(server: McpServer, client: PhemexClient, prod
 
       const res = await client.putWithQuery<unknown>(endpoint, params);
       if (res.code !== 0) {
-        return { content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code)}` }], isError: true };
+        return { content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code, res.msg)}` }], isError: true };
       }
       const responseData = (ContractRouter.isInverse(contractType) || ContractRouter.isSpot(contractType))
         ? productCache.convertResponse(resolved, res.data)

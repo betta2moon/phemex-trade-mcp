@@ -28,7 +28,7 @@ export function registerGetOpenOrders(server: McpServer, client: PhemexClient, p
           return { content: [{ type: "text" as const, text: `No open orders for ${symbol}.` }] };
         }
         return {
-          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code)}` }],
+          content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code, res.msg)}` }],
           isError: true,
         };
       }

@@ -37,7 +37,7 @@ export function registerSetLeverage(server: McpServer, client: PhemexClient, pro
 
       const res = await client.putWithQuery<unknown>(endpoint, params);
       if (res.code !== 0) {
-        return { content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code)}` }], isError: true };
+        return { content: [{ type: "text" as const, text: `Error: ${client.getErrorMessage(res.code, res.msg)}` }], isError: true };
       }
       const responseData = ContractRouter.isInverse(contractType)
         ? productCache.convertResponse(symbol, res.data)

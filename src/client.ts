@@ -140,7 +140,8 @@ export class PhemexClient {
     return (await response.json()) as PhemexResponse<T>;
   }
 
-  getErrorMessage(code: number): string {
+  getErrorMessage(code: number, msg?: string): string {
+    if (msg) return msg;
     return PHEMEX_ERRORS[code] ?? `Unknown error (code: ${code})`;
   }
 }

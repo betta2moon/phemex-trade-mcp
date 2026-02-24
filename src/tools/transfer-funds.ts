@@ -48,7 +48,7 @@ export function registerTransferFunds(server: McpServer, client: PhemexClient, p
 
       if (res.code !== 0) {
         return {
-          content: [{ type: "text" as const, text: `Transfer failed: ${client.getErrorMessage(res.code)}` }],
+          content: [{ type: "text" as const, text: `Transfer failed: ${client.getErrorMessage(res.code, res.msg)}` }],
           isError: true,
         };
       }

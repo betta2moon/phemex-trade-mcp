@@ -5,6 +5,7 @@ import { PhemexClient } from "./client.js";
 import { ProductInfoCache } from "./product-info.js";
 import { ContractRouter } from "./contract-router.js";
 import { parseCliArgs } from "./cli-parser.js";
+import { requireString, optString, optNumber, requireNumber, optBool } from "./param-helpers.js";
 import type { ContractType } from "./types.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -25,42 +26,6 @@ function getContractType(params: Record<string, unknown>): ContractType {
     fail(`Invalid contractType: ${ct}. Must be linear, inverse, or spot.`);
   }
   return ct;
-}
-
-function requireString(params: Record<string, unknown>, key: string): string {
-  const v = params[key];
-  if (typeof v !== "string" || v === "") fail(`Missing required parameter: --${key}`);
-  return v as string;
-}
-
-function optString(params: Record<string, unknown>, key: string): string | undefined {
-  const v = params[key];
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
-  return undefined;
-}
-
-function optNumber(params: Record<string, unknown>, key: string, defaultVal?: number): number | undefined {
-  const v = params[key];
-  if (v === undefined) return defaultVal;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") { const n = Number(v); if (!isNaN(n)) return n; }
-  fail(`Parameter --${key} must be a number`);
-}
-
-function requireNumber(params: Record<string, unknown>, key: string): number {
-  const v = optNumber(params, key);
-  if (v === undefined) fail(`Missing required parameter: --${key}`);
-  return v as number;
-}
-
-function optBool(params: Record<string, unknown>, key: string, defaultVal = false): boolean {
-  const v = params[key];
-  if (v === undefined) return defaultVal;
-  if (typeof v === "boolean") return v;
-  if (v === "true") return true;
-  if (v === "false") return false;
-  return defaultVal;
 }
 
 // ── Tool type ────────────────────────────────────────────────────────────────

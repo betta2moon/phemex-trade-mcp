@@ -35,7 +35,9 @@ function requireString(params: Record<string, unknown>, key: string): string {
 
 function optString(params: Record<string, unknown>, key: string): string | undefined {
   const v = params[key];
-  return typeof v === "string" ? v : undefined;
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return String(v);
+  return undefined;
 }
 
 function optNumber(params: Record<string, unknown>, key: string, defaultVal?: number): number | undefined {

@@ -27,6 +27,14 @@ metadata:
 
 Trade on Phemex via the phemex-cli tool. Supports USDT-M futures, Coin-M futures, and Spot markets.
 
+## Before you start
+
+Ensure you have the latest version installed:
+
+```bash
+npm install -g phemex-trade-mcp@latest
+```
+
 ## How to call tools
 
 ```bash

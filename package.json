@@ -32,10 +32,12 @@
   "description": "MCP server for trading on Phemex — USDT-M futures, Coin-M futures, and Spot markets",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "ws": "^8.19.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.2.3",
+    "@types/ws": "^8.18.1",
     "dotenv": "^17.3.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"

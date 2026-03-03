@@ -6,6 +6,7 @@ import { ProductInfoCache } from "./product-info.js";
 import { ContractRouter } from "./contract-router.js";
 import { parseCliArgs } from "./cli-parser.js";
 import { requireString, optString, optNumber, requireNumber, optBool } from "./param-helpers.js";
+import { PhemexWebSocketClient } from "./websocket-client.js";
 import type { ContractType } from "./types.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -444,11 +445,43 @@ async function main() {
 
   if (!toolName || toolName === "--help" || toolName === "-h") {
     console.log("Usage: phemex-cli <tool_name> [--flag value ...] | ['{json}']");
+    console.log("       phemex-cli subscribe <channel> --symbol <SYMBOL>");
     console.log("\nAvailable tools:");
     for (const name of Object.keys(TOOLS)) {
       console.log(`  ${name}`);
     }
+    console.log("\nStreaming (WebSocket):");
+    console.log("  subscribe ticker   --symbol <SYMBOL>   Stream price tickers");
+    console.log("  subscribe trade    --symbol <SYMBOL>   Stream live trades");
+    console.log("  subscribe orderbook --symbol <SYMBOL>  Stream order book updates");
     process.exit(0);
+  }
+
+  // ── Subscribe command (WebSocket streaming) ──
+  if (toolName === "subscribe") {
+    const channel = process.argv[3];
+    if (!channel) {
+      console.error("Usage: phemex-cli subscribe <channel> --symbol <SYMBOL>");
+      console.error("Channels: ticker, trade, orderbook");
+      console.error("Example: phemex-cli subscribe ticker --symbol SOLUSDT");
+      process.exit(1);
+    }
+    const subArgs = parseCliArgs(process.argv.slice(4));
+    const symbol = subArgs.symbol as string | undefined;
+    if (!symbol) {
+      console.error("Missing required parameter: --symbol");
+      process.exit(1);
+    }
+
+    const client = new PhemexWebSocketClient();
+    process.on("SIGINT", () => {
+      process.stderr.write("\nClosing WebSocket...\n");
+      client.close();
+      process.exit(0);
+    });
+    client.connect();
+    client.subscribe(channel, [symbol]);
+    return; // keep process alive for streaming
   }
 
   const handler = TOOLS[toolName];

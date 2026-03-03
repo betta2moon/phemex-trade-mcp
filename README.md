@@ -226,6 +226,30 @@ phemex-cli get_ticker '{"symbol":"BTCUSDT"}'
 phemex-cli --help
 ```
 
+### WebSocket Streaming
+
+Subscribe to real-time market data streams:
+
+```bash
+# Subscribe to price ticker (market24h)
+phemex-cli subscribe ticker --symbol BTCUSDT
+
+# Subscribe to live trades
+phemex-cli subscribe trade --symbol SOLUSDT
+
+# Subscribe to order book updates
+phemex-cli subscribe orderbook --symbol ETHUSDT
+```
+
+**Output format:**
+- JSON to **stdout** (for parsing/piping)
+- Logs to **stderr** (connection status, errors)
+
+**Features:**
+- Auto-reconnect with exponential backoff (1s → 30s)
+- Supports SIGINT (Ctrl+C) for graceful shutdown
+- WebSocket URL: `wss://ws.phemex.com` (configurable via `PHEMEX_WS_URL`)
+
 ## License
 
 ISC

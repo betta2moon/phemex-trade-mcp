@@ -4,7 +4,7 @@ import { PhemexConfig, PhemexResponse, PhemexMdResponse, PHEMEX_ERRORS } from ".
 export class PhemexClient {
   private readonly apiKey: string;
   private readonly apiSecret: string;
-  private readonly baseUrl: string;
+  readonly baseUrl: string;
   readonly maxOrderValue: number;
 
   constructor(config: PhemexConfig) {

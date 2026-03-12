@@ -45,6 +45,12 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), this ser
 | `transfer_funds` | Transfer funds between spot and futures wallets |
 | `get_transfer_history` | Query transfer history |
 
+### Utility
+
+| Tool | Description |
+|---|---|
+| `list_symbols` | List all available trading symbols, grouped by contract type |
+
 ### Contract Types
 
 Every tool accepts an optional `contractType` parameter:
@@ -61,7 +67,7 @@ Create an API key at [phemex.com](https://phemex.com) (or [testnet.phemex.com](h
 
 ### 2. Configure environment
 
-Copy `.env.example` to `.env` and fill in your keys:
+**Option A: Environment variables** — copy `.env.example` to `.env` and fill in your keys:
 
 ```
 PHEMEX_API_KEY=your-api-key
@@ -69,6 +75,20 @@ PHEMEX_API_SECRET=your-api-secret
 PHEMEX_API_URL=https://testnet-api.phemex.com
 PHEMEX_MAX_ORDER_VALUE=
 ```
+
+**Option B: Config file** — create `~/.phemexrc`:
+
+```bash
+# Phemex API Credentials
+PHEMEX_API_KEY=your-api-key
+PHEMEX_API_SECRET=your-api-secret
+PHEMEX_API_URL=https://api.phemex.com
+
+# Optional: max order value limit (USD)
+PHEMEX_MAX_ORDER_VALUE=1000
+```
+
+**Priority** (highest to lowest): CLI params → environment variables → `~/.phemexrc` → defaults (testnet).
 
 | Variable | Description |
 |---|---|
@@ -186,11 +206,17 @@ src/
   cli.ts                # CLI entry point — dispatches to tool handlers
   cli-parser.ts         # CLI argument parser (flag + JSON modes)
   client.ts             # Phemex API client (auth, signing, HTTP)
+  config.ts             # Config loading (~/.phemexrc + env vars)
   contract-router.ts    # Routes tools to correct API endpoints per contract type
+  errors.ts             # Enhanced error messages with suggestions
   product-info.ts       # Caches product metadata for price/qty scaling
+  tool-schemas.ts       # Tool parameter schemas and --help formatter
   types.ts              # Shared types
+  formatters/
+    field-mapper.ts     # Maps API field names to friendly names (--raw to skip)
   tools/
     get-ticker.ts       # One file per MCP tool
+    list-symbols.ts     # List all available trading symbols
     place-order.ts
     ...
 ```
@@ -200,6 +226,9 @@ Key design decisions:
 - **Contract router** — a single `contractType` parameter on every tool dispatches to the correct Phemex API endpoint (USDT-M `/g-*`, Coin-M `/orders/*`, Spot `/spot/*`).
 - **Automatic scaling** — Coin-M and Spot APIs use integer-scaled values (`priceEp`, `baseQtyEv`). The server handles conversion automatically via `ProductInfoCache`, so agents always work with human-readable decimals.
 - **Symbol resolution** — Spot symbols are auto-prefixed with `s` for the API (e.g. `BTCUSDT` becomes `sBTCUSDT`). Agents don't need to know this.
+- **Field name mapping** — API field suffixes (`closeRp`, `fundingRateRr`, etc.) are mapped to friendly names (`closePrice`, `fundingRate`). Use `--raw` to preserve original names.
+- **Config file** — `~/.phemexrc` provides persistent API credentials without exporting env vars every session.
+- **Enhanced errors** — Error codes are mapped to human-readable messages with actionable suggestions.
 
 ## CLI Usage
 
@@ -219,11 +248,19 @@ phemex-cli get_ticker --symbol BTCUSDT
 phemex-cli get_positions --currency USDT
 phemex-cli place_order --symbol BTCUSDT --side Buy --orderQty 0.01 --ordType Market
 
+# List available symbols
+phemex-cli list_symbols
+phemex-cli list_symbols --contractType linear
+
 # JSON args also supported
 phemex-cli get_ticker '{"symbol":"BTCUSDT"}'
 
 # Help
 phemex-cli --help
+phemex-cli place_order --help
+
+# Raw output (preserve original API field names)
+phemex-cli get_ticker --symbol BTCUSDT --raw
 ```
 
 ### WebSocket Streaming

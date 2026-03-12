@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { loadConfig } from "./config.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { PhemexClient } from "./client.js";
@@ -22,13 +23,13 @@ import { registerSwitchPosMode } from "./tools/switch-pos-mode.js";
 import { registerTransferFunds } from "./tools/transfer-funds.js";
 import { registerGetTransferHistory } from "./tools/get-transfer-history.js";
 import { registerGetSpotWallet } from "./tools/get-spot-wallet.js";
+import { registerListSymbols } from "./tools/list-symbols.js";
 
-const apiKey = process.env.PHEMEX_API_KEY ?? "";
-const apiSecret = process.env.PHEMEX_API_SECRET ?? "";
-const baseUrl = process.env.PHEMEX_API_URL ?? "https://testnet-api.phemex.com";
-const maxOrderValue = process.env.PHEMEX_MAX_ORDER_VALUE
-  ? Number(process.env.PHEMEX_MAX_ORDER_VALUE)
-  : undefined;
+const config = loadConfig();
+const apiKey = config.apiKey;
+const apiSecret = config.apiSecret;
+const baseUrl = config.apiUrl;
+const maxOrderValue = config.maxOrderValue;
 
 const client = new PhemexClient({ apiKey, apiSecret, baseUrl, maxOrderValue });
 
@@ -68,6 +69,9 @@ registerGetTransferHistory(server, client, productCache);
 
 // Register spot-only tools
 registerGetSpotWallet(server, client, productCache);
+
+// Register utility tools
+registerListSymbols(server, client, productCache);
 
 // Start server
 const transport = new StdioServerTransport();

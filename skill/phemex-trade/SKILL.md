@@ -47,7 +47,21 @@ Or with JSON args:
 phemex-cli <tool_name> '{"param1":"value1","param2":"value2"}'
 ```
 
-Output is always JSON. Environment variables `PHEMEX_API_KEY`, `PHEMEX_API_SECRET`, and `PHEMEX_API_URL` are read automatically.
+Output is always JSON. Environment variables `PHEMEX_API_KEY`, `PHEMEX_API_SECRET`, and `PHEMEX_API_URL` are read automatically. Config can also be stored in `~/.phemexrc`.
+
+### Tool help
+
+```bash
+phemex-cli <tool_name> --help
+```
+
+### Raw output
+
+By default, API field names are mapped to friendly names (e.g. `closeRp` → `closePrice`). Use `--raw` to preserve original field names:
+
+```bash
+phemex-cli get_ticker --symbol BTCUSDT --raw
+```
 
 ## Contract types
 
@@ -94,6 +108,10 @@ Every tool accepts an optional `--contractType` flag:
 - `transfer_funds` — Move funds between spot and futures. Example: `phemex-cli transfer_funds --currency USDT --amount 100 --direction spot_to_futures`
 - `get_transfer_history` — Transfer history. Example: `phemex-cli get_transfer_history --currency USDT --limit 20`
 
+### Utility
+
+- `list_symbols` — List all available trading symbols. Example: `phemex-cli list_symbols` or `phemex-cli list_symbols --contractType linear`
+
 ## Safety rules
 
 1. **Always confirm before placing orders.** Before calling `place_order`, show the user exactly what the order will do: symbol, side, quantity, type, price. Ask for confirmation.
@@ -138,6 +156,8 @@ phemex-cli get_positions --currency USDT
 
 1. Create a Phemex account at https://phemex.com
 2. Create an API key (Account → API Management)
-3. Set environment variables `PHEMEX_API_KEY` and `PHEMEX_API_SECRET`
+3. Set credentials via environment variables or `~/.phemexrc`:
+   - Environment: `export PHEMEX_API_KEY=... PHEMEX_API_SECRET=...`
+   - Config file: Create `~/.phemexrc` with `PHEMEX_API_KEY=...` and `PHEMEX_API_SECRET=...`
 4. Optionally set `PHEMEX_API_URL` (defaults to testnet `https://testnet-api.phemex.com` for safety; set to `https://api.phemex.com` for real trading)
 5. Optionally set `PHEMEX_MAX_ORDER_VALUE` to limit maximum order size (USD)

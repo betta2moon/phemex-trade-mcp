@@ -8,8 +8,15 @@ import { parseCliArgs } from "./cli-parser.js";
 import { requireString, optString, optNumber, requireNumber, optBool } from "./param-helpers.js";
 import { PhemexWebSocketClient } from "./websocket-client.js";
 import type { ContractType } from "./types.js";
+import { fetchSymbols, filterByContractType } from "./tools/list-symbols.js";
+import { loadConfig } from "./config.js";
+import { enhanceError } from "./errors.js";
+import { TOOL_SCHEMAS, formatHelp } from "./tool-schemas.js";
+import { mapFields } from "./formatters/field-mapper.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+let useRawOutput = false;
 
 function fail(message: string): never {
   console.error(JSON.stringify({ error: message }));
@@ -17,7 +24,8 @@ function fail(message: string): never {
 }
 
 function succeed(data: unknown): never {
-  console.log(JSON.stringify(data, null, 2));
+  const output = mapFields(data, useRawOutput);
+  console.log(JSON.stringify(output, null, 2));
   process.exit(0);
 }
 
@@ -414,6 +422,15 @@ const handleGetTransferHistory: ToolHandler = async (params, client, pc) => {
   succeed(displayRows);
 };
 
+// ── Utility handlers ────────────────────────────────────────────────────────
+
+const handleListSymbols: ToolHandler = async (params, client) => {
+  const contractType = optString(params, "contractType");
+  const symbols = await fetchSymbols(client.baseUrl);
+  const filtered = filterByContractType(symbols, contractType);
+  succeed(filtered);
+};
+
 // ── Dispatch table ───────────────────────────────────────────────────────────
 
 const TOOLS: Record<string, ToolHandler> = {
@@ -436,6 +453,7 @@ const TOOLS: Record<string, ToolHandler> = {
   switch_pos_mode: handleSwitchPosMode,
   transfer_funds: handleTransferFunds,
   get_transfer_history: handleGetTransferHistory,
+  list_symbols: handleListSymbols,
 };
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -450,6 +468,8 @@ async function main() {
     for (const name of Object.keys(TOOLS)) {
       console.log(`  ${name}`);
     }
+    console.log("\nUtility:");
+    console.log("  list_symbols                          List all available trading symbols");
     console.log("\nStreaming (WebSocket):");
     console.log("  subscribe ticker   --symbol <SYMBOL>   Stream price tickers");
     console.log("  subscribe trade    --symbol <SYMBOL>   Stream live trades");
@@ -489,13 +509,26 @@ async function main() {
     fail(`Unknown tool: ${toolName}. Run phemex-cli --help for available tools.`);
   }
 
+  // --help for individual tools
   const args = process.argv.slice(3);
-  const params = parseCliArgs(args);
+  if (args.includes("--help") || args.includes("-h")) {
+    const schema = TOOL_SCHEMAS[toolName];
+    if (schema) {
+      console.log(formatHelp(schema));
+    } else {
+      console.log(`No help available for ${toolName}.`);
+    }
+    process.exit(0);
+  }
 
-  const apiKey = process.env.PHEMEX_API_KEY ?? "";
-  const apiSecret = process.env.PHEMEX_API_SECRET ?? "";
-  const baseUrl = process.env.PHEMEX_API_URL ?? "https://testnet-api.phemex.com";
-  const maxOrderValue = process.env.PHEMEX_MAX_ORDER_VALUE ? Number(process.env.PHEMEX_MAX_ORDER_VALUE) : undefined;
+  const params = parseCliArgs(args);
+  useRawOutput = optBool(params, "raw");
+
+  const config = loadConfig();
+  const apiKey = config.apiKey;
+  const apiSecret = config.apiSecret;
+  const baseUrl = config.apiUrl;
+  const maxOrderValue = config.maxOrderValue;
 
   const client = new PhemexClient({ apiKey, apiSecret, baseUrl, maxOrderValue });
   const productCache = new ProductInfoCache(baseUrl);
@@ -505,5 +538,11 @@ async function main() {
 }
 
 main().catch((err) => {
-  fail(err instanceof Error ? err.message : String(err));
+  const toolName = process.argv[2];
+  const enhanced = enhanceError(
+    err instanceof Error ? { message: err.message, code: (err as any).code } : err,
+    { _tool: toolName }
+  );
+  console.error(JSON.stringify(enhanced, null, 2));
+  process.exit(1);
 });

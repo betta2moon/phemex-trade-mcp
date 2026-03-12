@@ -9,8 +9,11 @@ export interface EnhancedError {
 type ErrorEnhancer = (err: any, params: any) => EnhancedError;
 
 const ERROR_ENHANCEMENTS: Record<number | string, ErrorEnhancer> = {
+  // ── Numeric error codes ────────────────────────────────────────────────────
+
   6001: (err, params) => {
     if (params.symbol) {
+      // Symbol ending in USD but not USDT → likely meant USDT perpetual
       if (params.symbol.endsWith("USD") && !params.symbol.endsWith("USDT")) {
         return {
           error: `Invalid symbol: ${params.symbol}`,
@@ -19,15 +22,30 @@ const ERROR_ENHANCEMENTS: Record<number | string, ErrorEnhancer> = {
           tip: 'Run "phemex-cli list_symbols" to see all available symbols.',
         };
       }
+      // Generic invalid symbol
+      return {
+        error: `Invalid symbol: ${params.symbol}`,
+        code: 6001,
+        suggestion: `Symbol "${params.symbol}" is not recognized. Check spelling and contract type.`,
+        tip: 'Run "phemex-cli list_symbols" to see all available symbols.',
+      };
     }
-    return { error: err.message || "Invalid argument", code: 6001 };
+    return {
+      error: err.message || "Invalid argument",
+      code: 6001,
+      suggestion: params._tool
+        ? `Run "phemex-cli ${params._tool} --help" to see valid parameters.`
+        : "Check your parameters.",
+    };
   },
 
-  10001: (err) => ({
+  10001: (err, params) => ({
     error: "Illegal request",
     code: 10001,
     suggestion: "The request format may be invalid. Check parameter types and values.",
-    tip: 'Run "phemex-cli <tool> --help" to see parameter requirements.',
+    tip: params._tool
+      ? `Run "phemex-cli ${params._tool} --help" to see parameter requirements.`
+      : 'Run "phemex-cli <tool> --help" to see parameter requirements.',
   }),
 
   10002: () => ({
@@ -106,18 +124,98 @@ const ERROR_ENHANCEMENTS: Record<number | string, ErrorEnhancer> = {
     suggestion: "The order may have already been filled or cancelled.",
     tip: `Check order history with "phemex-cli get_order_history --symbol ${params.symbol || "BTCUSDT"}"`,
   }),
+
+  // ── String-based error messages (Phemex returns these in the msg field) ──
+
+  TE_QTY_TOO_LARGE: (err, params) => ({
+    error: "Order quantity too large",
+    code: "TE_QTY_TOO_LARGE",
+    suggestion: `The order quantity exceeds the maximum allowed for ${params.symbol || "this symbol"}.`,
+    tip: 'Reduce --orderQty or check the symbol\'s max order size on Phemex.',
+  }),
+
+  TE_QTY_TOO_SMALL: (err, params) => ({
+    error: "Order quantity too small",
+    code: "TE_QTY_TOO_SMALL",
+    suggestion: `The order quantity is below the minimum for ${params.symbol || "this symbol"}.`,
+    tip: "Check the minimum order quantity for this symbol on Phemex.",
+  }),
+
+  TE_PRICE_TOO_HIGH: (err, params) => ({
+    error: "Order price too high",
+    code: "TE_PRICE_TOO_HIGH",
+    suggestion: `The limit price is above the maximum allowed for ${params.symbol || "this symbol"}.`,
+    tip: "Use a price closer to the current market price.",
+  }),
+
+  TE_PRICE_TOO_LOW: (err, params) => ({
+    error: "Order price too low",
+    code: "TE_PRICE_TOO_LOW",
+    suggestion: `The limit price is below the minimum allowed for ${params.symbol || "this symbol"}.`,
+    tip: "Use a price closer to the current market price.",
+  }),
+
+  TE_NO_ENOUGH_AVAILABLE_BALANCE: (err, params) => ({
+    error: "Insufficient available balance",
+    code: "TE_NO_ENOUGH_AVAILABLE_BALANCE",
+    suggestion: `Not enough ${params.currency || "USDT"} to place this order.`,
+    tip: 'Check your balance with "phemex-cli get_account --currency USDT"',
+  }),
+
+  TE_SYMBOL_INVALID: (err, params) => ({
+    error: `Invalid symbol: ${params.symbol || "unknown"}`,
+    code: "TE_SYMBOL_INVALID",
+    suggestion: `Symbol "${params.symbol || "unknown"}" is not recognized.`,
+    tip: 'Run "phemex-cli list_symbols" to see all available symbols.',
+  }),
+
+  OM_ORDER_NOT_FOUND: (err, params) => ({
+    error: `Order not found${params.orderID ? `: ${params.orderID}` : ""}`,
+    code: "OM_ORDER_NOT_FOUND",
+    suggestion: "The order may have already been filled or cancelled.",
+    tip: `Check order history with "phemex-cli get_order_history --symbol ${params.symbol || "BTCUSDT"}"`,
+  }),
+
+  TE_CANNOT_AMEND: () => ({
+    error: "Cannot amend order",
+    code: "TE_CANNOT_AMEND",
+    suggestion: "The order cannot be amended. It may already be filled, cancelled, or in a terminal state.",
+  }),
+
+  TE_REDUCE_ONLY_REJECT: () => ({
+    error: "Reduce-only order rejected",
+    code: "TE_REDUCE_ONLY_REJECT",
+    suggestion: "The reduce-only order was rejected because it would increase your position.",
+    tip: "Check your current position size before placing reduce-only orders.",
+  }),
 };
 
+/**
+ * Enhance a Phemex API error with user-friendly messages.
+ *
+ * Accepts either:
+ * - An object with { code, message } (from API response)
+ * - An object with { code, msg } (as returned by PhemexResponse)
+ *
+ * The params object provides context (symbol, _tool, etc.) for richer messages.
+ */
 export function enhanceError(err: any, params: any = {}): EnhancedError {
   const code = err.code ?? err.error_code ?? err.statusCode ?? "UNKNOWN";
-  const enhancer = ERROR_ENHANCEMENTS[code];
+  const msg = err.msg ?? err.message ?? "";
 
-  if (enhancer) {
-    return enhancer(err, params);
+  // Try string msg first — TE_/OM_ codes are more specific than generic numeric codes
+  if (typeof msg === "string" && ERROR_ENHANCEMENTS[msg]) {
+    return ERROR_ENHANCEMENTS[msg](err, params);
+  }
+
+  // Then try numeric code
+  const enhancerByCode = ERROR_ENHANCEMENTS[code];
+  if (enhancerByCode) {
+    return enhancerByCode(err, params);
   }
 
   // Network / fetch errors
-  if (err.message?.includes("fetch failed") || err.message?.includes("ECONNREFUSED")) {
+  if (msg?.includes?.("fetch failed") || msg?.includes?.("ECONNREFUSED")) {
     return {
       error: "Network error: unable to reach Phemex API",
       code: "NETWORK_ERROR",
@@ -127,7 +225,7 @@ export function enhanceError(err: any, params: any = {}): EnhancedError {
   }
 
   return {
-    error: err.message || JSON.stringify(err),
+    error: msg || JSON.stringify(err),
     code,
   };
 }

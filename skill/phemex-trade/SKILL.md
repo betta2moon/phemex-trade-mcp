@@ -27,6 +27,14 @@ metadata:
 
 Trade on Phemex via the phemex-cli tool. Supports USDT-M futures, Coin-M futures, and Spot markets.
 
+## What's New in v1.2.0
+
+1. **`list_symbols` tool** — Discover all available trading pairs, filtered by contract type. No more guessing symbol names.
+2. **Config file (`~/.phemexrc`)** — Store API credentials persistently. No need to `export` env vars every session.
+3. **`--help` for every tool** — Run `phemex-cli <tool> --help` to see parameters, defaults, and usage examples inline.
+4. **Friendly field names** — API field suffixes (`closeRp`, `fundingRateRr`) are mapped to readable names (`closePrice`, `fundingRate`). Use `--raw` to get the original names.
+5. **Enhanced error messages** — Errors now include `suggestion` and `tip` fields with actionable guidance instead of raw API codes.
+
 ## Before you start
 
 Ensure you have the latest version installed:
@@ -47,21 +55,98 @@ Or with JSON args:
 phemex-cli <tool_name> '{"param1":"value1","param2":"value2"}'
 ```
 
-Output is always JSON. Environment variables `PHEMEX_API_KEY`, `PHEMEX_API_SECRET`, and `PHEMEX_API_URL` are read automatically. Config can also be stored in `~/.phemexrc`.
+Output is always JSON. Credentials are loaded from environment variables or `~/.phemexrc` (see Setup).
 
 ### Tool help
 
+Every tool supports `--help` with full parameter docs and examples:
+
 ```bash
-phemex-cli <tool_name> --help
+phemex-cli place_order --help
 ```
 
-### Raw output
+Output:
 
-By default, API field names are mapped to friendly names (e.g. `closeRp` → `closePrice`). Use `--raw` to preserve original field names:
+```
+Usage: phemex-cli place_order [options]
+
+Place an order (Market, Limit, Stop, StopLimit)
+
+Required Parameters:
+  --symbol <string>          Trading pair (e.g. BTCUSDT)
+  --side <string>            Buy or Sell
+  --orderQty <number>        Quantity. linear: base amount (0.01 = 0.01 BTC). ...
+  --ordType <string>         Order type: Market, Limit, Stop, StopLimit
+
+Optional Parameters:
+  --price <number>           Limit price (required for Limit/StopLimit)
+  --timeInForce <string>     GoodTillCancel, PostOnly, ... [default: GoodTillCancel]
+  --reduceOnly <boolean>     Only reduce position [default: false]
+  ...
+
+Examples:
+  phemex-cli place_order --symbol BTCUSDT --side Buy --orderQty 0.01 --ordType Market
+  phemex-cli place_order --symbol BTCUSDT --side Sell --orderQty 0.01 --ordType Limit --price 90000 --timeInForce PostOnly
+```
+
+More help examples:
+
+```bash
+phemex-cli get_ticker --help        # see params for price ticker
+phemex-cli get_klines --help        # see resolution values for candlesticks
+phemex-cli set_leverage --help      # see leverage param format
+phemex-cli transfer_funds --help    # see direction values
+phemex-cli list_symbols --help      # see contractType filter
+```
+
+### Friendly field names
+
+By default, output uses readable field names:
+
+```bash
+phemex-cli get_ticker --symbol BTCUSDT
+```
+
+```json
+{
+  "closePrice": "70549.9",
+  "openPrice": "70192.7",
+  "highPrice": "70750",
+  "lowPrice": "69160",
+  "markPrice": "70549.9",
+  "fundingRate": "-0.00003417",
+  "volume": "5303.525",
+  "turnover": "371204351.5978"
+}
+```
+
+Use `--raw` to get original API field names (for scripts that depend on old format):
 
 ```bash
 phemex-cli get_ticker --symbol BTCUSDT --raw
 ```
+
+```json
+{
+  "closeRp": "70549.9",
+  "openRp": "70192.7",
+  "highRp": "70750",
+  "lowRp": "69160",
+  "markPriceRp": "70549.9",
+  "fundingRateRr": "-0.00003417",
+  "volumeRq": "5303.525",
+  "turnoverRv": "371204351.5978"
+}
+```
+
+**Field name mapping reference:**
+
+| Suffix | Meaning | Example | Mapped to |
+|--------|---------|---------|-----------|
+| `Rp` | Real Price | `closeRp` | `closePrice` |
+| `Rv` | Real Value | `accountBalanceRv` | `accountBalance` |
+| `Rr` | Real Rate | `fundingRateRr` | `fundingRate` |
+| `Rq` | Real Quantity | `volumeRq` | `volume` |
 
 ## Contract types
 
@@ -110,7 +195,80 @@ Every tool accepts an optional `--contractType` flag:
 
 ### Utility
 
-- `list_symbols` — List all available trading symbols. Example: `phemex-cli list_symbols` or `phemex-cli list_symbols --contractType linear`
+- `list_symbols` — List all available trading symbols, grouped by contract type.
+
+```bash
+# List all symbols (linear, inverse, spot)
+phemex-cli list_symbols
+
+# Only USDT-M perpetual futures
+phemex-cli list_symbols --contractType linear
+
+# Only Coin-M perpetual futures
+phemex-cli list_symbols --contractType inverse
+
+# Only spot pairs
+phemex-cli list_symbols --contractType spot
+```
+
+Example output:
+
+```json
+{
+  "linear": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", ...],
+  "inverse": ["BTCUSD", "ETHUSD", ...],
+  "spot": ["BTCUSDT", "ETHUSDT", ...]
+}
+```
+
+Use `list_symbols` to discover valid symbol names before trading. This avoids "invalid symbol" errors.
+
+## Error messages
+
+Errors return structured JSON with actionable guidance. Examples:
+
+**Invalid symbol:**
+
+```bash
+phemex-cli get_ticker --symbol INVALIDXXX
+```
+
+```json
+{
+  "error": "Invalid symbol: INVALIDXXX",
+  "code": 6001,
+  "suggestion": "Symbol \"INVALIDXXX\" is not recognized. Check spelling and contract type.",
+  "tip": "Run \"phemex-cli list_symbols\" to see all available symbols."
+}
+```
+
+**Common typo (BTCUSD instead of BTCUSDT):**
+
+```bash
+phemex-cli get_ticker --symbol BTCUSD
+```
+
+```json
+{
+  "error": "Invalid symbol: BTCUSD",
+  "code": 6001,
+  "suggestion": "Did you mean BTCUSDT? For USDT perpetuals, use symbols ending in USDT (e.g. BTCUSDT).",
+  "tip": "Run \"phemex-cli list_symbols\" to see all available symbols."
+}
+```
+
+**Order quantity too large:**
+
+```json
+{
+  "error": "Order quantity too large",
+  "code": "TE_QTY_TOO_LARGE",
+  "suggestion": "The order quantity exceeds the maximum allowed for BTCUSDT.",
+  "tip": "Reduce --orderQty or check the symbol's max order size on Phemex."
+}
+```
+
+**Other enhanced errors:** insufficient balance, invalid API key, rate limiting, invalid leverage, order not found — all include `suggestion` and `tip` fields.
 
 ## Safety rules
 
@@ -126,6 +284,12 @@ Every tool accepts an optional `--contractType` flag:
 
 ```bash
 phemex-cli get_ticker --symbol BTCUSDT
+```
+
+### Discover available symbols
+
+```bash
+phemex-cli list_symbols --contractType linear
 ```
 
 ### Place a market buy (USDT-M futures)
@@ -152,12 +316,54 @@ phemex-cli place_order --symbol BTCUSDT --side Buy --orderQty 10 --ordType Marke
 phemex-cli get_positions --currency USDT
 ```
 
+### Get help for any command
+
+```bash
+phemex-cli place_order --help
+```
+
 ## Setup
+
+### Option 1: Config file (recommended)
+
+Create `~/.phemexrc` — credentials persist across sessions without exporting env vars:
+
+```bash
+# ~/.phemexrc
+PHEMEX_API_KEY=your-api-key
+PHEMEX_API_SECRET=your-api-secret
+PHEMEX_API_URL=https://api.phemex.com
+
+# Optional: max order value limit (USD)
+PHEMEX_MAX_ORDER_VALUE=1000
+```
+
+That's it. All `phemex-cli` commands will pick up these values automatically.
+
+### Option 2: Environment variables
+
+```bash
+export PHEMEX_API_KEY=your-api-key
+export PHEMEX_API_SECRET=your-api-secret
+export PHEMEX_API_URL=https://api.phemex.com
+```
+
+### Configuration priority
+
+Settings are loaded in this order (highest priority first):
+
+1. Command-line arguments
+2. Environment variables
+3. `~/.phemexrc` config file
+4. Defaults (testnet URL)
+
+This means env vars always override the config file, so you can safely keep production creds in `~/.phemexrc` and temporarily override with `PHEMEX_API_URL=https://testnet-api.phemex.com phemex-cli ...` for testing.
+
+### Steps
 
 1. Create a Phemex account at https://phemex.com
 2. Create an API key (Account → API Management)
-3. Set credentials via environment variables or `~/.phemexrc`:
-   - Environment: `export PHEMEX_API_KEY=... PHEMEX_API_SECRET=...`
-   - Config file: Create `~/.phemexrc` with `PHEMEX_API_KEY=...` and `PHEMEX_API_SECRET=...`
-4. Optionally set `PHEMEX_API_URL` (defaults to testnet `https://testnet-api.phemex.com` for safety; set to `https://api.phemex.com` for real trading)
-5. Optionally set `PHEMEX_MAX_ORDER_VALUE` to limit maximum order size (USD)
+3. Save credentials to `~/.phemexrc` or export as environment variables
+4. Verify: `phemex-cli list_symbols --contractType linear` should return symbols
+5. Optionally set `PHEMEX_API_URL` (defaults to testnet `https://testnet-api.phemex.com` for safety; set to `https://api.phemex.com` for real trading)
+6. Optionally set `PHEMEX_MAX_ORDER_VALUE` to limit maximum order size (USD)

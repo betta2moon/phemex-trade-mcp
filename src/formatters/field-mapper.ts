@@ -43,6 +43,8 @@ const FIELD_MAP: Record<string, string> = {
   cumFundingFeeRv: "cumFundingFee",
   cumTransactFeeRv: "cumTransactFee",
   bankruptCommRv: "bankruptComm",
+  buyLeavesValueRv: "buyLeavesValue",
+  sellLeavesValueRv: "sellLeavesValue",
 
   // Rates (Rr = Real Rate)
   fundingRateRr: "fundingRate",
